@@ -1,0 +1,23 @@
+sites:
+  - name: Anthropic
+    url: https://www.anthropic.com/news
+    rss_url: null
+    notion_label: Anthropic
+    scrape:
+      articles_selector: "a[href^='/news/']"
+      base_url: https://www.anthropic.com
+
+  - name: Anthropic Research
+    url: https://www.anthropic.com/research
+    rss_url: null
+    notion_label: Anthropic
+    scrape:
+      articles_selector: "a[href^='/research/']"
+      base_url: https://www.anthropic.com
+      exclude_url_patterns:
+        - "/research/team"
+
+settings:
+  lookback_days: 3           # How far back to look for new articles on first run
+  notion_database_id: "d423fe7ae84745c4b2538a2311ab56f6"
+  max_articles_per_run: 10   # Max new articles to process per site per run
