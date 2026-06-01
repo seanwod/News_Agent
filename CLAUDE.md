@@ -30,7 +30,7 @@ python cli.py sites remove "OpenAI"
 | `ANTHROPIC_API_KEY` | Claude API key |
 | `NOTION_API_KEY` | Notion integration token |
 | `NOTION_DATABASE_ID` | Pre-set to the created database (`d423fe7ae84745c4b2538a2311ab56f6`) |
-| `SLACK_WEBHOOK_URL` | Optional — if set, posts a digest summary to Slack after each run |
+| `SLACK_WEBHOOK_URL` | Optional. If set, posts a digest summary to Slack after each run. |
 
 ## Architecture
 
@@ -69,12 +69,13 @@ Sites without RSS feeds use HTML scraping. The `scrape.articles_selector` CSS se
 
 Use `notion_label` in a site entry to override the Notion "Site" select value (e.g. two Anthropic feeds both label as `"Anthropic"`).
 
-When a site name not in the existing Notion select options is written, the Notion API auto-creates a new option — no manual Notion config needed.
+When a site name not in the existing Notion select options is written, the Notion API auto-creates a new option. No manual Notion config needed.
 
 ## Scheduling (daily automation)
 
-To run automatically each morning, add a cron job:
-```bash
-# Run at 7am every day
-0 7 * * * cd /path/to/News_Agent && /path/to/python cli.py run >> ~/news_agent.log 2>&1
-```
+Runs twice daily via launchd, not cron. Plists live at:
+
+- `~/Library/LaunchAgents/com.newsagent.morning.plist` (6:00 AM)
+- `~/Library/LaunchAgents/com.newsagent.afternoon.plist` (2:00 PM)
+
+Both pin `WorkingDirectory` to the project root and call the venv's interpreter directly. Logs go to `~/news_agent.log`. After editing a plist, reload with `launchctl unload <path> && launchctl load <path>`. See `bootstrap-sean-projects.md` for the full migration recipe.
