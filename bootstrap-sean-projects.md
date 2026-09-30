@@ -52,7 +52,7 @@ The variable list is sourced from `.env.example`. Real values live in `.env` (gi
 | Variable | Required? | Where to get the value | What breaks without it |
 |---|---|---|---|
 | `ANTHROPIC_API_KEY` | Yes | console.anthropic.com under the Security Benefit org. Settings → API Keys → Create Key. | Summarizer fails on every article. |
-| `SLACK_WEBHOOK_URL` | Yes | Slack → Apps → Incoming Webhooks → personal DM. | The run exits before fetching anything. Slack is the only output. |
+| `SLACK_WEBHOOK_URL` | Yes | api.slack.com/apps → News Agent → Incoming Webhooks → the `#sean-ai-news` webhook. | The run exits before fetching anything. Slack is the only output. |
 
 To create a fresh `.env` on a new machine:
 
@@ -72,7 +72,7 @@ cp .env.example .env
 - **Notion (retired 2026-09-30).** The agent no longer writes to Notion. The old "News Agent Digest" database (Sean's Personal → Top Of Mind) keeps its history but is not updated.
 
 - **Slack**
-  - Login: personal workspace, DM target.
+  - Login: Security Benefit workspace. Target is `#sean-ai-news`, a private channel with Sean as the only member, set to notify on all new messages.
   - Role: self.
   - Dashboard: https://api.slack.com/apps
   - Verify access without posting: `curl -X POST -H 'Content-type: application/json' --data '{}' "$SLACK_WEBHOOK_URL"` should return `invalid_payload`. A dead webhook returns `no_service` or `invalid_token`.
@@ -113,7 +113,7 @@ Works in both **VS Code** and **Cursor** (Cursor is a VS Code fork, configs are 
 | Smoke test (no Slack post) | None today. Closest is `python -c "from scraper import fetch_articles; from agent import load_config; print(len(fetch_articles(load_config()['sites'][0])))"` |
 | Tail launchd log | `tail -f ~/news_agent.log` |
 
-There is no test suite. The smoke test is "verbose run, see the digest arrive in the Slack DM."
+There is no test suite. The smoke test is "verbose run, see the digest arrive in `#sean-ai-news`."
 
 ## 8. Production / deployment
 
@@ -124,12 +124,12 @@ There is no test suite. The smoke test is "verbose run, see the digest arrive in
 - **Manual trigger:** `launchctl start com.newsagent.morning` (or `.afternoon`). Or just `python cli.py run`.
 - **Reload plists after editing:** `launchctl unload ~/Library/LaunchAgents/com.newsagent.morning.plist && launchctl load ~/Library/LaunchAgents/com.newsagent.morning.plist`. Same for afternoon.
 - **Logs:** `~/news_agent.log` (combined stdout + stderr from both jobs).
-- **Last known healthy:** 2026-09-30. Posted an 8-article digest to the Slack DM.
+- **Last known healthy:** 2026-09-30. Webhook moved to `#sean-ai-news`; test post confirmed in the channel.
 
 ## 9. Live state, where to look
 
 - **Repo:** https://github.com/seanwod/News_Agent
-- **Digest:** Slack DM to self, posted by the incoming webhook app.
+- **Digest:** `#sean-ai-news` (private Slack channel), posted by the News Agent incoming webhook. Digests before 2026-09-30 1:40 PM went to Sean's DM with himself.
 - **Anthropic usage:** https://console.anthropic.com (Security Benefit org → Usage)
 - **launchd job status:** `launchctl list | grep newsagent`
 - **Run log:** `~/news_agent.log`
@@ -159,7 +159,7 @@ python cli.py sites list
 # 5. Smoke test: verbose run (will hit the sources, Anthropic, and Slack)
 python cli.py run --verbose
 
-# 6. Confirm the digest arrived in your Slack DM.
+# 6. Confirm the digest arrived in #sean-ai-news.
 
 # 7. Install launchd schedules. Copy the plists from your old Mac, or recreate
 #    them with WorkingDirectory pointing at the new path. Then:

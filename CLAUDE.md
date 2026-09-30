@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project does
 
-A Python CLI agent that checks a configurable list of websites each morning for new publications, uses Claude to summarize each article, and posts a digest to Slack via an incoming webhook, grouped by company. (Until Sep 30, 2026 it also wrote each article to a Notion database, "News Agent Digest" under Top Of Mind. That database is still in Notion but no longer updated.)
+A Python CLI agent that checks a configurable list of websites each morning for new publications, uses Claude to summarize each article, and posts a digest to the private Slack channel `#sean-ai-news` via an incoming webhook, grouped by company. (Until Sep 30, 2026 it also wrote each article to a Notion database, "News Agent Digest" under Top Of Mind. That database is still in Notion but no longer updated.)
 
 ## Commands
 
