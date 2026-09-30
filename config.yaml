@@ -19,6 +19,24 @@ sites:
     exclude_keywords:
       - "GeForce NOW"         # weekly game-streaming lineup posts
 
+  - name: SpaceX AI (xAI)
+    url: https://x.ai/news
+    rss_url: null
+    notion_label: SpaceX AI
+    scrape:
+      articles_selector: "a[href^='/news/']"
+      base_url: https://x.ai
+
+  - name: SpaceX AI (Cursor)
+    url: https://cursor.com/blog
+    rss_url: null
+    notion_label: SpaceX AI
+    scrape:
+      articles_selector: "a[href^='/blog/']"
+      base_url: https://cursor.com
+      exclude_url_patterns:
+        - "/blog/topic/"
+
   # Open-weight models. The labs' own sites are blocked by the corporate web
   # filter (Zscaler), so releases come from their official Hugging Face orgs.
   - name: Kimi (Moonshot)
