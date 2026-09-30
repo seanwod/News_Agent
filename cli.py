@@ -17,10 +17,10 @@ def cli():
 @cli.command()
 @click.option("--verbose", "-v", is_flag=True, help="Show per-article progress.")
 def run(verbose):
-    """Fetch latest news and write summaries to Notion."""
+    """Fetch latest news and post summaries to Slack."""
     click.echo("Running News Agent...")
     results = agent.run(verbose=verbose)
-    click.echo(f"\nDone. Added {len(results)} new article(s) to Notion.")
+    click.echo(f"\nDone. Posted {len(results)} new article(s) to Slack.")
 
 
 @cli.group()
@@ -46,7 +46,7 @@ def sites_list():
 @click.argument("name")
 @click.argument("url")
 @click.option("--rss", default=None, help="RSS feed URL (if available).")
-@click.option("--label", default=None, help="Notion Site label (defaults to NAME).")
+@click.option("--label", default=None, help="Label shown in the Slack digest (defaults to NAME).")
 def sites_add(name, url, rss, label):
     """Add NAME and URL to the monitored sites list."""
     config = agent.load_config()
@@ -59,7 +59,7 @@ def sites_add(name, url, rss, label):
         "name": name,
         "url": url,
         "rss_url": rss,
-        "notion_label": label or name,
+        "label": label or name,
     }
     if not rss:
         parsed = urlparse(url)
@@ -73,10 +73,6 @@ def sites_add(name, url, rss, label):
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
 
     click.echo(f"Added '{name}' ({url})")
-    if label and label not in {"Anthropic", "OpenAI", "Google DeepMind", "Other"}:
-        click.echo(
-            f"Tip: '{label}' will be auto-created as a new Site option in your Notion database."
-        )
 
 
 @sites.command(name="remove")

@@ -1,7 +1,7 @@
 # Bootstrap, News Agent
 
 > Read this first when picking up the project on a new Mac or in a new IDE.
-> Owner: Sean O'Donoghue. Last refreshed: 2026-05-26.
+> Owner: Sean O'Donoghue. Last refreshed: 2026-09-30.
 
 ## 1. 60-second sanity check
 
@@ -15,7 +15,7 @@ pip install -r requirements.txt
 python cli.py sites list
 ```
 
-`sites list` should print the two configured sources (Anthropic, Anthropic Research). If it fails, jump to §2 (runtime) or §3 (deps) depending on the error.
+`sites list` should print the configured sources (19 as of 2026-09-30). If it fails, jump to §2 (runtime) or §3 (deps) depending on the error.
 
 ## 2. Runtime requirements
 
@@ -36,7 +36,6 @@ Current pinned deps:
 
 ```
 anthropic>=0.40.0
-notion-client>=2.2.0
 feedparser>=6.0.11
 requests>=2.31.0
 beautifulsoup4>=4.12.0
@@ -53,9 +52,7 @@ The variable list is sourced from `.env.example`. Real values live in `.env` (gi
 | Variable | Required? | Where to get the value | What breaks without it |
 |---|---|---|---|
 | `ANTHROPIC_API_KEY` | Yes | console.anthropic.com under the Security Benefit org. Settings → API Keys → Create Key. | Summarizer fails on every article. |
-| `NOTION_API_KEY` | Yes | notion.so/profile/integrations (Sean's Personal workspace). Open the "News Agent" integration → copy the internal integration token. | Notion writes fail; nothing lands in the database. |
-| `NOTION_DATABASE_ID` | Yes | Pre-set to `d423fe7ae84745c4b2538a2311ab56f6`. Already in `.env.example` and `config.yaml`. | Notion writes fail. |
-| `SLACK_WEBHOOK_URL` | No | Slack → Apps → Incoming Webhooks → personal DM. Optional, agent runs without it (just no digest message). | No Slack digest. Articles still write to Notion. |
+| `SLACK_WEBHOOK_URL` | Yes | Slack → Apps → Incoming Webhooks → personal DM. | The run exits before fetching anything. Slack is the only output. |
 
 To create a fresh `.env` on a new machine:
 
@@ -72,18 +69,13 @@ cp .env.example .env
   - Dashboard: https://console.anthropic.com
   - Verify access: `python -c "import anthropic; print(anthropic.Anthropic().messages.create(model='claude-opus-4-6', max_tokens=10, messages=[{'role':'user','content':'hi'}]).content[0].text)"`
 
-- **Notion**
-  - Login: Sean's Personal workspace (not Security Benefit).
-  - Role: Owner.
-  - Dashboard: https://www.notion.so → Sean's Personal → Top Of Mind → News Agent Digest.
-  - Direct database link: https://www.notion.so/d423fe7ae84745c4b2538a2311ab56f6
-  - Verify access: `python -c "import os; from notion_client import Client; from dotenv import load_dotenv; load_dotenv(); print(Client(auth=os.environ['NOTION_API_KEY']).databases.retrieve(os.environ['NOTION_DATABASE_ID'])['title'][0]['plain_text'])"`
+- **Notion (retired 2026-09-30).** The agent no longer writes to Notion. The old "News Agent Digest" database (Sean's Personal → Top Of Mind) keeps its history but is not updated.
 
 - **Slack**
   - Login: personal workspace, DM target.
   - Role: self.
   - Dashboard: https://api.slack.com/apps
-  - Verify access: `curl -X POST -H 'Content-type: application/json' --data '{"text":"ping from News Agent"}' "$SLACK_WEBHOOK_URL"` should return `ok`.
+  - Verify access without posting: `curl -X POST -H 'Content-type: application/json' --data '{}' "$SLACK_WEBHOOK_URL"` should return `invalid_payload`. A dead webhook returns `no_service` or `invalid_token`.
 
 - **GitHub**
   - Login: personal account `seanwod`.
@@ -118,10 +110,10 @@ Works in both **VS Code** and **Cursor** (Cursor is a VS Code fork, configs are 
 | Remove a site | `python cli.py sites remove "OpenAI"` |
 | Full run, quiet | `python cli.py run` |
 | Full run, verbose | `python cli.py run --verbose` |
-| Smoke test (no Notion write) | None today. Closest is `python -c "from scraper import fetch_articles; from agent import load_config; print(len(fetch_articles(load_config()['sites'][0])))"` |
+| Smoke test (no Slack post) | None today. Closest is `python -c "from scraper import fetch_articles; from agent import load_config; print(len(fetch_articles(load_config()['sites'][0])))"` |
 | Tail launchd log | `tail -f ~/news_agent.log` |
 
-There is no test suite. The smoke test is "verbose run on a Saturday morning, see articles appear in Notion."
+There is no test suite. The smoke test is "verbose run, see the digest arrive in the Slack DM."
 
 ## 8. Production / deployment
 
@@ -132,12 +124,12 @@ There is no test suite. The smoke test is "verbose run on a Saturday morning, se
 - **Manual trigger:** `launchctl start com.newsagent.morning` (or `.afternoon`). Or just `python cli.py run`.
 - **Reload plists after editing:** `launchctl unload ~/Library/LaunchAgents/com.newsagent.morning.plist && launchctl load ~/Library/LaunchAgents/com.newsagent.morning.plist`. Same for afternoon.
 - **Logs:** `~/news_agent.log` (combined stdout + stderr from both jobs).
-- **Last known healthy:** 2026-05-26. Test run wrote 20 articles to Notion.
+- **Last known healthy:** 2026-09-30. Posted an 8-article digest to the Slack DM.
 
 ## 9. Live state, where to look
 
 - **Repo:** https://github.com/seanwod/News_Agent
-- **Notion database:** https://www.notion.so/d423fe7ae84745c4b2538a2311ab56f6
+- **Digest:** Slack DM to self, posted by the incoming webhook app.
 - **Anthropic usage:** https://console.anthropic.com (Security Benefit org → Usage)
 - **launchd job status:** `launchctl list | grep newsagent`
 - **Run log:** `~/news_agent.log`
@@ -164,10 +156,10 @@ cp .env.example .env
 # 4. Smoke test: list sites (no API calls)
 python cli.py sites list
 
-# 5. Smoke test: verbose run (will hit Anthropic + Notion + Slack)
+# 5. Smoke test: verbose run (will hit the sources, Anthropic, and Slack)
 python cli.py run --verbose
 
-# 6. Confirm articles landed in Notion (eye check the database).
+# 6. Confirm the digest arrived in your Slack DM.
 
 # 7. Install launchd schedules. Copy the plists from your old Mac, or recreate
 #    them with WorkingDirectory pointing at the new path. Then:
@@ -178,12 +170,12 @@ launchctl list | grep newsagent   # should show both labels
 
 ## 11. Gotchas / project-specific quirks
 
-- **Empty `state.json` will flood Notion (and Slack) on the next run.** State is gitignored, so cloning to a new machine starts with no memory of what was already processed. Before the first real run on a new machine, copy `state.json` over from the old machine, or accept a one-time backfill of up to `max_articles_per_run` (default 10) per site. The 2026-05-26 migration hit this exact issue: 20 articles got reposted because state was empty.
+- **Empty `state.json` will flood Slack on the next run.** State is gitignored, so cloning to a new machine starts with no memory of what was already processed. Before the first real run on a new machine, copy `state.json` over from the old machine, or accept a one-time backfill. Dated sources (RSS, Hugging Face) only backfill `lookback_days` (7); undated HTML sources backfill up to `max_articles_per_run` (10) each. The 2026-05-26 migration hit this exact issue: 20 articles got reposted because state was empty.
 - **launchd needs absolute paths.** `WorkingDirectory` is required in both plists. Without it, the venv's `python` can't find `cli.py` and `load_dotenv` can't find `.env`. Both currently set correctly.
 - **Don't use `/usr/bin/env python3` in plists.** launchd's PATH differs from the login shell. The plists pin the venv's interpreter directly, which is the right pattern. Keep it.
 - **Zscaler SSL MITM is why `pip-system-certs` is in requirements.txt.** Without it, `pip install` from inside Security Benefit's network breaks on TLS verification. Don't remove this dep even if it looks unused. It patches certs at import time.
 - **`.env` empty values don't override shell env.** Per Sean's CLAUDE.md, the standard guard is `value = value or os.environ.get("KEY")`. This project uses `python-dotenv` with `override=True`, which means `.env` always wins. If you ever export `ANTHROPIC_API_KEY` in your shell and forget to update `.env`, the shell value gets ignored. Keep `.env` authoritative.
-- **Two Anthropic feeds, one Notion label.** `config.yaml` sets `notion_label: Anthropic` for both the news and research feeds. This is intentional. The Notion "Site" select stays clean instead of fragmenting into "Anthropic" / "Anthropic Research".
-- **Notion DATE properties only accept `YYYY-MM-DD`.** `notion_writer.py` strips any time component before writing. Don't change this; RSS feeds publish ISO-8601 datetimes that Notion otherwise rejects.
-- **`max_articles_per_run` is per-site, not total.** Default 10. A 2-site config can produce up to 20 articles per run.
-- **The HTML scraper auto-skips the index page itself** (anything ending in `/news` or `/research`). If you add a new site whose article URLs end in those paths, that filter will eat them. See `scraper.py:57-58`.
+- **Several sources share one `label` on purpose.** xAI and Cursor both post under "SpaceX AI", three Gemma sources under "Gemma (Google)", and The Decoder, SCMP, and Recode under "Open-weight news". The label is the Slack heading.
+- **Zscaler blocks most AI lab websites** (DeepSeek, Qwen, Kimi, Z.ai, Xiaomi MiMo, Google DeepMind, Interconnects). The open-weight labs are tracked through their Hugging Face orgs instead. Interconnects is configured and logs a 403 each run until the block is lifted.
+- **`max_articles_per_run` is per-site, not total.** Default 10. `lookback_days` keeps normal runs to a handful of articles.
+- **The HTML scraper auto-skips the index page itself** (anything ending in `/news` or `/research`). If you add a new site whose article URLs end in those paths, that filter will eat them. See `_fetch_from_html` in `scraper.py`.

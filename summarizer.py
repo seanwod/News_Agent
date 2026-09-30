@@ -17,7 +17,7 @@ Article Content:
 {content[:3000]}
 
 Respond in exactly this format (no extra text):
-SUMMARY: <2-3 sentence summary of the key points>
+SUMMARY: <2-3 sentence summary of the key points. Do not use em dashes.>
 CATEGORY: <one of: Blog Post, Research Paper, Product Update, Model Release, News, Other>"""
 
     message = client.messages.create(
@@ -32,7 +32,7 @@ CATEGORY: <one of: Blog Post, Research Paper, Product Update, Model Release, New
 
     for line in response_text.strip().split("\n"):
         if line.startswith("SUMMARY:"):
-            summary = line[len("SUMMARY:"):].strip()
+            summary = line[len("SUMMARY:"):].strip().replace(" — ", ", ").replace("—", ", ")
         elif line.startswith("CATEGORY:"):
             raw = line[len("CATEGORY:"):].strip()
             category = raw if raw in VALID_CATEGORIES else "Other"

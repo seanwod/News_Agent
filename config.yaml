@@ -2,7 +2,7 @@ sites:
   - name: Anthropic
     url: https://www.anthropic.com/news
     rss_url: null
-    notion_label: Anthropic
+    label: Anthropic
     scrape:
       articles_selector: "a[href^='/news/']"
       base_url: https://www.anthropic.com
@@ -10,19 +10,19 @@ sites:
   - name: OpenAI
     url: https://openai.com/news/
     rss_url: https://openai.com/news/rss.xml
-    notion_label: OpenAI
+    label: OpenAI
 
   - name: NVIDIA Newsroom
     url: https://nvidianews.nvidia.com/
     rss_url: https://nvidianews.nvidia.com/releases.xml
-    notion_label: NVIDIA
+    label: NVIDIA
     exclude_keywords:
       - "GeForce NOW"         # weekly game-streaming lineup posts
 
   - name: SpaceX AI (xAI)
     url: https://x.ai/news
     rss_url: null
-    notion_label: SpaceX AI
+    label: SpaceX AI
     scrape:
       articles_selector: "a[href^='/news/']"
       base_url: https://x.ai
@@ -30,71 +30,100 @@ sites:
   - name: SpaceX AI (Cursor)
     url: https://cursor.com/blog
     rss_url: null
-    notion_label: SpaceX AI
+    label: SpaceX AI
     scrape:
       articles_selector: "a[href^='/blog/']"
       base_url: https://cursor.com
       exclude_url_patterns:
         - "/blog/topic/"
 
+  - name: Ollama
+    url: https://ollama.com/blog
+    rss_url: https://ollama.com/blog/rss.xml
+    label: Ollama
+
+  - name: Interconnects (Nathan Lambert)
+    url: https://www.interconnects.ai/
+    rss_url: https://www.interconnects.ai/feed
+    label: Interconnects
+
+  # Independent coverage of the open-weight labs, filtered to stories that name them
+  - name: The Decoder
+    url: https://the-decoder.com/
+    rss_url: https://the-decoder.com/feed/
+    label: Open-weight news
+    include_keywords: &open_weight_labs
+      ["deepseek", "qwen", "kimi", "moonshot ai", "zhipu", "z\\.ai", "\\bglm-", "mimo", "gemma", "nemotron"]
+
+  - name: SCMP Tech
+    url: https://www.scmp.com/tech
+    rss_url: https://www.scmp.com/rss/36/feed
+    label: Open-weight news
+    include_keywords: *open_weight_labs
+
+  - name: Recode China AI
+    url: https://recodechinaai.substack.com/
+    rss_url: https://recodechinaai.substack.com/feed
+    label: Open-weight news
+    include_keywords: *open_weight_labs
+
   # Open-weight models. The labs' own sites are blocked by the corporate web
   # filter (Zscaler), so releases come from their official Hugging Face orgs.
   - name: Kimi (Moonshot)
     url: https://huggingface.co/moonshotai
     hf_author: moonshotai
-    notion_label: Kimi (Moonshot)
+    label: Kimi (Moonshot)
     include_keywords: ["^Kimi"]
 
   - name: Qwen (Alibaba)
     url: https://huggingface.co/Qwen
     hf_author: Qwen
-    notion_label: Qwen (Alibaba)
+    label: Qwen (Alibaba)
     include_keywords: ["^Qwen"]
 
   - name: DeepSeek
     url: https://huggingface.co/deepseek-ai
     hf_author: deepseek-ai
-    notion_label: DeepSeek
+    label: DeepSeek
     include_keywords: ["^DeepSeek"]
 
   - name: GLM (Z.ai)
     url: https://huggingface.co/zai-org
     hf_author: zai-org
-    notion_label: GLM (Z.ai)
+    label: GLM (Z.ai)
     include_keywords: ["^GLM"]
 
   - name: MiMo (Xiaomi)
     url: https://huggingface.co/XiaomiMiMo
     hf_author: XiaomiMiMo
-    notion_label: MiMo (Xiaomi)
+    label: MiMo (Xiaomi)
     include_keywords: ["^MiMo"]
 
   - name: Nemotron (Hugging Face)
     url: https://huggingface.co/nvidia
     hf_author: nvidia
     hf_search: nemotron
-    notion_label: Nemotron (NVIDIA)
+    label: Nemotron (NVIDIA)
     include_keywords: ["nemotron"]
 
   - name: Gemma (Hugging Face)
     url: https://huggingface.co/google
     hf_author: google        # no hf_search: HF search misses names like diffusiongemma
-    notion_label: Gemma (Google)
+    label: Gemma (Google)
     include_keywords: ["gemma"]
 
   - name: Gemma (Google Blog)
     url: https://blog.google/technology/developers/
     rss_url: https://blog.google/technology/developers/rss/
-    notion_label: Gemma (Google)
+    label: Gemma (Google)
     include_keywords: ["gemma"]
 
   - name: Gemma (Google Developers Blog)
     url: https://developers.googleblog.com/
     rss_url: https://developers.googleblog.com/feeds/posts/default
-    notion_label: Gemma (Google)
+    label: Gemma (Google)
     include_keywords: ["gemma"]
 
 settings:
   lookback_days: 7           # Skip dated articles older than this (undated HTML scrapes rely on state.json)
-  notion_database_id: "d423fe7ae84745c4b2538a2311ab56f6"
   max_articles_per_run: 10   # Max new articles to process per site per run

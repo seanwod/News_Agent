@@ -40,7 +40,10 @@ def _passes_filters(include_text: str, exclude_text: str, site_config: dict) -> 
 
 
 def _fetch_from_rss(site_config: dict) -> list[dict]:
-    feed = feedparser.parse(site_config["rss_url"])
+    # Fetch with requests so a web-filter block shows up as an HTTP error, not a parse error
+    response = requests.get(site_config["rss_url"], timeout=30, headers=HEADERS)
+    response.raise_for_status()
+    feed = feedparser.parse(response.content)
     if feed.bozo and not feed.entries:
         raise RuntimeError(f"unreadable feed: {feed.get('bozo_exception')}")
     articles = []
@@ -50,7 +53,7 @@ def _fetch_from_rss(site_config: dict) -> list[dict]:
             "title": entry.get("title", "").strip(),
             "url": entry.get("link", ""),
             "content": BeautifulSoup(entry.get("summary", ""), "html.parser").get_text(" ", strip=True),
-            # Notion needs YYYY-MM-DD; feeds give RFC 822 or ISO timestamps
+            # YYYY-MM-DD for the lookback check; feeds give RFC 822 or ISO timestamps
             "date": time.strftime("%Y-%m-%d", parsed) if parsed else "",
         })
     return articles

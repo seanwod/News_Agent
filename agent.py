@@ -1,4 +1,4 @@
-"""Core agent logic: fetch → summarize → write to Notion."""
+"""Core agent logic: fetch → summarize → post to Slack."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-from notion_writer import write_article
 from notifier import notify_slack
 from scraper import fetch_article_content, fetch_articles
 from state import load_seen_urls, mark_seen
@@ -31,10 +30,13 @@ def run(verbose: bool = False) -> list[dict]:
       1. Fetch article links
       2. Skip already-seen URLs
       3. Fetch full content, summarize with Claude
-      4. Write to Notion
+      4. Post the digest to Slack
 
     Returns the list of newly processed articles.
     """
+    if not os.environ.get("SLACK_WEBHOOK_URL", "").strip():
+        raise SystemExit("SLACK_WEBHOOK_URL is not set, so there is nowhere to post the digest.")
+
     config = load_config()
     settings = config.get("settings", {})
     max_articles = settings.get("max_articles_per_run", 10)
@@ -81,18 +83,12 @@ def run(verbose: bool = False) -> list[dict]:
             summary_result = summarize_article(article["title"], article["content"], site_name)
             article["summary"] = summary_result["summary"]
             article["category"] = summary_result["category"]
-            article["site"] = site.get("notion_label", site_name)
+            article["site"] = site.get("label", site_name)
+            new_urls.extend(article.get("related_urls") or [article["url"]])
+            results.append(article)
 
-            try:
-                notion_url = write_article(article)
-                article["notion_url"] = notion_url
-                new_urls.extend(article.get("related_urls") or [article["url"]])
-                results.append(article)
-                if verbose:
-                    print(f"  -> Notion: {notion_url}")
-            except Exception as exc:
-                print(f"  ERROR writing to Notion: {exc}")
-
+    # Mark seen only once Slack has the digest, so a failed post retries next run
+    if not notify_slack(results):
+        return []
     mark_seen(new_urls)
-    notify_slack(results)
     return results
