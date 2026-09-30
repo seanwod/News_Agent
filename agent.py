@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from datetime import date, timedelta
 from pathlib import Path
 
 import yaml
@@ -37,6 +38,7 @@ def run(verbose: bool = False) -> list[dict]:
     config = load_config()
     settings = config.get("settings", {})
     max_articles = settings.get("max_articles_per_run", 10)
+    cutoff = (date.today() - timedelta(days=settings.get("lookback_days", 7))).isoformat()
 
     seen_urls = load_seen_urls()
     new_urls: list[str] = []
@@ -53,7 +55,12 @@ def run(verbose: bool = False) -> list[dict]:
             print(f"[{site_name}] ERROR fetching articles: {exc}")
             continue
 
-        new_articles = [a for a in articles if a["url"] not in seen_urls][:max_articles]
+        # Undated articles (HTML scrapes) rely on seen_urls alone
+        new_articles = [
+            a for a in articles
+            if not seen_urls.intersection(a.get("related_urls") or [a["url"]])
+            and (not a.get("date") or a["date"] >= cutoff)
+        ][:max_articles]
 
         if verbose:
             print(f"[{site_name}] {len(new_articles)} new article(s) found.")
@@ -62,10 +69,13 @@ def run(verbose: bool = False) -> list[dict]:
             if verbose:
                 print(f"  Processing: {article['title'][:70]}...")
 
-            if not article.get("content"):
+            # RSS summaries are often a single line, so fetch the full article too
+            if len(article.get("content", "")) < 500:
                 fetched = fetch_article_content(article["url"])
-                article["content"] = fetched["content"]
-                if fetched["title"]:
+                if not article.get("content") or not fetched["content"].startswith("Could not fetch"):
+                    article["content"] = fetched["content"]
+                # HTML link text is messy; RSS and Hugging Face titles are already clean
+                if fetched["title"] and not site.get("rss_url"):
                     article["title"] = fetched["title"]
 
             summary_result = summarize_article(article["title"], article["content"], site_name)
@@ -76,7 +86,7 @@ def run(verbose: bool = False) -> list[dict]:
             try:
                 notion_url = write_article(article)
                 article["notion_url"] = notion_url
-                new_urls.append(article["url"])
+                new_urls.extend(article.get("related_urls") or [article["url"]])
                 results.append(article)
                 if verbose:
                     print(f"  -> Notion: {notion_url}")

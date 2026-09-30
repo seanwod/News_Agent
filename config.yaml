@@ -7,17 +7,76 @@ sites:
       articles_selector: "a[href^='/news/']"
       base_url: https://www.anthropic.com
 
-  - name: Anthropic Research
-    url: https://www.anthropic.com/research
-    rss_url: null
-    notion_label: Anthropic
-    scrape:
-      articles_selector: "a[href^='/research/']"
-      base_url: https://www.anthropic.com
-      exclude_url_patterns:
-        - "/research/team"
+  - name: OpenAI
+    url: https://openai.com/news/
+    rss_url: https://openai.com/news/rss.xml
+    notion_label: OpenAI
+
+  - name: NVIDIA Newsroom
+    url: https://nvidianews.nvidia.com/
+    rss_url: https://nvidianews.nvidia.com/releases.xml
+    notion_label: NVIDIA
+    exclude_keywords:
+      - "GeForce NOW"         # weekly game-streaming lineup posts
+
+  # Open-weight models. The labs' own sites are blocked by the corporate web
+  # filter (Zscaler), so releases come from their official Hugging Face orgs.
+  - name: Kimi (Moonshot)
+    url: https://huggingface.co/moonshotai
+    hf_author: moonshotai
+    notion_label: Kimi (Moonshot)
+    include_keywords: ["^Kimi"]
+
+  - name: Qwen (Alibaba)
+    url: https://huggingface.co/Qwen
+    hf_author: Qwen
+    notion_label: Qwen (Alibaba)
+    include_keywords: ["^Qwen"]
+
+  - name: DeepSeek
+    url: https://huggingface.co/deepseek-ai
+    hf_author: deepseek-ai
+    notion_label: DeepSeek
+    include_keywords: ["^DeepSeek"]
+
+  - name: GLM (Z.ai)
+    url: https://huggingface.co/zai-org
+    hf_author: zai-org
+    notion_label: GLM (Z.ai)
+    include_keywords: ["^GLM"]
+
+  - name: MiMo (Xiaomi)
+    url: https://huggingface.co/XiaomiMiMo
+    hf_author: XiaomiMiMo
+    notion_label: MiMo (Xiaomi)
+    include_keywords: ["^MiMo"]
+
+  - name: Nemotron (Hugging Face)
+    url: https://huggingface.co/nvidia
+    hf_author: nvidia
+    hf_search: nemotron
+    notion_label: Nemotron (NVIDIA)
+    include_keywords: ["nemotron"]
+
+  - name: Gemma (Hugging Face)
+    url: https://huggingface.co/google
+    hf_author: google        # no hf_search: HF search misses names like diffusiongemma
+    notion_label: Gemma (Google)
+    include_keywords: ["gemma"]
+
+  - name: Gemma (Google Blog)
+    url: https://blog.google/technology/developers/
+    rss_url: https://blog.google/technology/developers/rss/
+    notion_label: Gemma (Google)
+    include_keywords: ["gemma"]
+
+  - name: Gemma (Google Developers Blog)
+    url: https://developers.googleblog.com/
+    rss_url: https://developers.googleblog.com/feeds/posts/default
+    notion_label: Gemma (Google)
+    include_keywords: ["gemma"]
 
 settings:
-  lookback_days: 3           # How far back to look for new articles on first run
+  lookback_days: 7           # Skip dated articles older than this (undated HTML scrapes rely on state.json)
   notion_database_id: "d423fe7ae84745c4b2538a2311ab56f6"
   max_articles_per_run: 10   # Max new articles to process per site per run

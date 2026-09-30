@@ -37,7 +37,8 @@ python cli.py sites remove "OpenAI"
 ```
 cli.py          → Click CLI entry point (run / sites add|remove|list)
 agent.py        → Orchestration loop: fetch → summarize → write → notify
-scraper.py      → Fetch article lists (RSS via feedparser, or HTML via BeautifulSoup)
+scraper.py      → Fetch article lists (RSS via feedparser, HTML via BeautifulSoup,
+                  or Hugging Face model releases via the HF API)
                   + fetch_article_content() for full article text
 summarizer.py   → Claude API call; returns {summary, category}
 notion_writer.py→ notion-client SDK; creates one Notion page per article
@@ -58,7 +59,7 @@ Location: Notion → Sean's Personal → Top Of Mind → News Agent Digest
 | Title | title | Article headline |
 | Date | date | Publication date (defaults to today) |
 | Site | select | Source site name (new values auto-created) |
-| Category | select | Blog Post / Research Paper / Product Update / News / Other |
+| Category | select | Blog Post / Research Paper / Product Update / Model Release / News / Other |
 | Summary | rich_text | Claude's 2-3 sentence summary |
 | URL | url | Link to original article |
 | Read | checkbox | Manual tracking |
@@ -67,7 +68,13 @@ Location: Notion → Sean's Personal → Top Of Mind → News Agent Digest
 
 Sites without RSS feeds use HTML scraping. The `scrape.articles_selector` CSS selector determines which `<a>` tags are treated as article links. For sites where the default `"a"` selector is too broad, refine it (e.g. `"a[href*='/blog/']"`). Use `scrape.exclude_url_patterns` (list of substrings) to filter out non-article links like team/about pages.
 
-Use `notion_label` in a site entry to override the Notion "Site" select value (e.g. two Anthropic feeds both label as `"Anthropic"`).
+Use `notion_label` in a site entry to override the Notion "Site" select value (e.g. three Gemma sources all label as `"Gemma (Google)"`).
+
+`include_keywords` and `exclude_keywords` (lists of case-insensitive regexes) work on any source. Include matches the title plus RSS summary; exclude matches the title plus URL. Use them to narrow a broad feed to one topic (the Google blogs filtered to Gemma).
+
+**Hugging Face sources.** Open-weight labs (Kimi, Qwen, DeepSeek, GLM, MiMo, Nemotron, Gemma) are tracked through their Hugging Face orgs, because the corporate Zscaler filter blocks the labs' own sites on the work Mac. Set `hf_author` (and optionally `hf_search` for a server-side name filter) instead of `rss_url`. Repos created on the same day are grouped into one article, quantized builds (FP8, GGUF, QAT, etc.) are skipped via `HF_BUILD_VARIANTS` in `scraper.py`, and the summary is written from the model card. The `sites add` CLI does not support HF entries; edit `config.yaml` directly.
+
+`lookback_days` skips dated articles older than the window, so a new RSS or HF source only backfills the last week. HTML scrapes have no dates, so a new HTML source processes up to `max_articles_per_run` on its first run unless its current URLs are seeded into `state.json`.
 
 When a site name not in the existing Notion select options is written, the Notion API auto-creates a new option. No manual Notion config needed.
 

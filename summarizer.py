@@ -2,7 +2,7 @@
 
 import anthropic
 
-VALID_CATEGORIES = {"Blog Post", "Research Paper", "Product Update", "News", "Other"}
+VALID_CATEGORIES = {"Blog Post", "Research Paper", "Product Update", "Model Release", "News", "Other"}
 
 
 def summarize_article(title: str, content: str, site_name: str) -> dict:
@@ -18,7 +18,7 @@ Article Content:
 
 Respond in exactly this format (no extra text):
 SUMMARY: <2-3 sentence summary of the key points>
-CATEGORY: <one of: Blog Post, Research Paper, Product Update, News, Other>"""
+CATEGORY: <one of: Blog Post, Research Paper, Product Update, Model Release, News, Other>"""
 
     message = client.messages.create(
         model="claude-opus-4-6",
