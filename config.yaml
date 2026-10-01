@@ -125,5 +125,6 @@ sites:
     include_keywords: ["gemma"]
 
 settings:
+  run_hours: [6, 14]         # Mac local time. launchd wakes the agent hourly; `run --scheduled` decides
   lookback_days: 7           # Skip dated articles older than this (undated HTML scrapes rely on state.json)
   max_articles_per_run: 10   # Max new articles to process per site per run

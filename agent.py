@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import yaml
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from notifier import notify_slack
 from scraper import fetch_article_content, fetch_articles
-from state import load_seen_urls, mark_seen
+from state import load_last_scheduled_run, load_seen_urls, mark_seen
 from summarizer import summarize_article
 
 load_dotenv(Path(__file__).parent / ".env", override=True)
@@ -22,6 +22,23 @@ CONFIG_FILE = Path(__file__).parent / "config.yaml"
 def load_config() -> dict:
     with open(CONFIG_FILE) as f:
         return yaml.safe_load(f)
+
+
+def scheduled_run_due(now: datetime) -> bool:
+    """True if a run_hours slot (Mac local time) has passed since the last scheduled run.
+
+    launchd wakes the agent hourly and this decides. launchd keeps the time zone it
+    booted with, so scheduling 6 AM in launchd itself drifts when the Mac travels.
+    """
+    hours = load_config().get("settings", {}).get("run_hours", [6, 14])
+    slots = [
+        now.replace(hour=h, minute=0, second=0, microsecond=0) - timedelta(days=d)
+        for h in hours
+        for d in (0, 1)
+    ]
+    latest_slot = max(s for s in slots if s <= now)
+    last = load_last_scheduled_run()
+    return last is None or last < latest_slot
 
 
 def run(verbose: bool = False) -> list[dict]:
@@ -46,6 +63,7 @@ def run(verbose: bool = False) -> list[dict]:
     new_urls: list[str] = []
     results: list[dict] = []
 
+    fetch_failures = 0
     for site in config.get("sites", []):
         site_name = site["name"]
         if verbose:
@@ -55,6 +73,7 @@ def run(verbose: bool = False) -> list[dict]:
             articles = fetch_articles(site)
         except Exception as exc:
             print(f"[{site_name}] ERROR fetching articles: {exc}")
+            fetch_failures += 1
             continue
 
         # Undated articles (HTML scrapes) rely on seen_urls alone
@@ -87,8 +106,10 @@ def run(verbose: bool = False) -> list[dict]:
             new_urls.extend(article.get("related_urls") or [article["url"]])
             results.append(article)
 
+    if fetch_failures == len(config.get("sites", [])):
+        raise RuntimeError("every source failed to fetch (network not up yet?)")
     # Mark seen only once Slack has the digest, so a failed post retries next run
     if not notify_slack(results):
-        return []
+        raise RuntimeError("Slack post failed; these articles will be retried next run")
     mark_seen(new_urls)
     return results

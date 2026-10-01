@@ -64,9 +64,8 @@ Interconnects is configured but blocked by Zscaler ("General AI and ML Applicati
 
 ## Scheduling (daily automation)
 
-Runs twice daily via launchd, not cron. Plists live at:
+Posts at 6 AM and 2 PM Mac local time (`settings.run_hours`). One launchd job, `~/Library/LaunchAgents/com.newsagent.scheduler.plist`, fires at the top of every hour and calls `cli.py run --scheduled`. That exits quietly unless a `run_hours` slot has passed since `last_scheduled_run` in `state.json` (a timezone-aware timestamp). So a run missed while the Mac slept happens at the next hourly wake. A run that fails (no network, Slack down) is not recorded and retries the next hour.
 
-- `~/Library/LaunchAgents/com.newsagent.morning.plist` (6:00 AM)
-- `~/Library/LaunchAgents/com.newsagent.afternoon.plist` (2:00 PM)
+Why not schedule 6 AM in launchd directly: launchd keeps the time zone it booted with. On Sep 28, 2026 the Mac moved from Eastern to Pacific without a reboot, and the old 6 AM / 2 PM plists kept firing at 3 AM / 11 AM Pacific. The old `com.newsagent.morning` and `com.newsagent.afternoon` plists were removed on Oct 1, 2026.
 
-Both pin `WorkingDirectory` to the project root and call the venv's interpreter directly. Logs go to `~/news_agent.log`. After editing a plist, reload with `launchctl unload <path> && launchctl load <path>`. See `bootstrap-sean-projects.md` for the full migration recipe.
+The plist pins `WorkingDirectory` to the project root and calls the venv's interpreter directly. Logs go to `~/news_agent.log`, and each run starts with a timestamped line. After editing a plist, reload with `launchctl unload <path> && launchctl load <path>`. See `bootstrap-sean-projects.md` for the full migration recipe.

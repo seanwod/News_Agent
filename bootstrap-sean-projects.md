@@ -20,9 +20,9 @@ python cli.py sites list
 ## 2. Runtime requirements
 
 - **Language:** Python 3.14 (3.14.5 confirmed working). Not pinned in repo; install via Homebrew (`brew install python@3.14`) or Python.org installer.
-- **Interpreter path on this Mac:** `/usr/local/bin/python3`. There is also `/opt/homebrew/bin/python3` (Apple Silicon Homebrew) on macOS systems. Pick one and stay with it. The launchd plists use `/Users/odonog/Desktop/seanailab/News_Agent/venv/bin/python3`, which resolves through the venv to whichever base Python created it.
+- **Interpreter path on this Mac:** `/usr/local/bin/python3`. There is also `/opt/homebrew/bin/python3` (Apple Silicon Homebrew) on macOS systems. Pick one and stay with it. The launchd plist uses `/Users/odonog/Desktop/seanailab/News_Agent/venv/bin/python3`, which resolves through the venv to whichever base Python created it.
 - **OS notes:**
-  - Scheduled runs use launchd (not cron). Plists at `~/Library/LaunchAgents/com.newsagent.morning.plist` and `~/Library/LaunchAgents/com.newsagent.afternoon.plist`. Both pin `WorkingDirectory` to the project root.
+  - Scheduled runs use launchd (not cron). One plist at `~/Library/LaunchAgents/com.newsagent.scheduler.plist`, firing hourly, with `WorkingDirectory` pinned to the project root.
   - Corporate Zscaler SSL MITM breaks `pip` and `requests` without a fix. `pip-system-certs` is in `requirements.txt` precisely to read certs from the macOS keychain. Do not remove it.
 - **System binaries required:** none beyond Python.
 
@@ -118,11 +118,9 @@ There is no test suite. The smoke test is "verbose run, see the digest arrive in
 ## 8. Production / deployment
 
 - **Where it runs:** locally on Sean's Mac via launchd. No cloud deploy.
-- **Schedule:** twice daily.
-  - `com.newsagent.morning` fires at 6:00 AM local time.
-  - `com.newsagent.afternoon` fires at 2:00 PM local time.
-- **Manual trigger:** `launchctl start com.newsagent.morning` (or `.afternoon`). Or just `python cli.py run`.
-- **Reload plists after editing:** `launchctl unload ~/Library/LaunchAgents/com.newsagent.morning.plist && launchctl load ~/Library/LaunchAgents/com.newsagent.morning.plist`. Same for afternoon.
+- **Schedule:** digests at 6:00 AM and 2:00 PM Mac local time (`settings.run_hours` in `config.yaml`). `com.newsagent.scheduler` fires every hour on the hour and runs `cli.py run --scheduled`, which exits quietly unless a slot has passed since the last scheduled run.
+- **Manual trigger:** `python cli.py run` (always runs, does not touch the schedule). `launchctl kickstart gui/$(id -u)/com.newsagent.scheduler` tests the launchd path, but it only posts if a slot is due.
+- **Reload the plist after editing:** `launchctl unload ~/Library/LaunchAgents/com.newsagent.scheduler.plist && launchctl load ~/Library/LaunchAgents/com.newsagent.scheduler.plist`.
 - **Logs:** `~/news_agent.log` (combined stdout + stderr from both jobs).
 - **Last known healthy:** 2026-09-30. Webhook moved to `#sean-ai-news`; test post confirmed in the channel.
 
@@ -161,20 +159,22 @@ python cli.py run --verbose
 
 # 6. Confirm the digest arrived in #sean-ai-news.
 
-# 7. Install launchd schedules. Copy the plists from your old Mac, or recreate
-#    them with WorkingDirectory pointing at the new path. Then:
-launchctl load ~/Library/LaunchAgents/com.newsagent.morning.plist
-launchctl load ~/Library/LaunchAgents/com.newsagent.afternoon.plist
-launchctl list | grep newsagent   # should show both labels
+# 7. Install the launchd schedule. Copy com.newsagent.scheduler.plist from your
+#    old Mac, or recreate it (hourly StartCalendarInterval with only Minute=0,
+#    ProgramArguments: venv python3, cli.py, run, --scheduled) with
+#    WorkingDirectory pointing at the new path. Then:
+launchctl load ~/Library/LaunchAgents/com.newsagent.scheduler.plist
+launchctl list | grep newsagent   # should show com.newsagent.scheduler
 ```
 
 ## 11. Gotchas / project-specific quirks
 
 - **Empty `state.json` will flood Slack on the next run.** State is gitignored, so cloning to a new machine starts with no memory of what was already processed. Before the first real run on a new machine, copy `state.json` over from the old machine, or accept a one-time backfill. Dated sources (RSS, Hugging Face) only backfill `lookback_days` (7); undated HTML sources backfill up to `max_articles_per_run` (10) each. The 2026-05-26 migration hit this exact issue: 20 articles got reposted because state was empty.
-- **launchd needs absolute paths.** `WorkingDirectory` is required in both plists. Without it, the venv's `python` can't find `cli.py` and `load_dotenv` can't find `.env`. Both currently set correctly.
-- **Don't use `/usr/bin/env python3` in plists.** launchd's PATH differs from the login shell. The plists pin the venv's interpreter directly, which is the right pattern. Keep it.
+- **launchd needs absolute paths.** `WorkingDirectory` is required in the plist. Without it, the venv's `python` can't find `cli.py` and `load_dotenv` can't find `.env`. Both currently set correctly.
+- **Don't use `/usr/bin/env python3` in plists.** launchd's PATH differs from the login shell. The plist pins the venv's interpreter directly, which is the right pattern. Keep it.
 - **Zscaler SSL MITM is why `pip-system-certs` is in requirements.txt.** Without it, `pip install` from inside Security Benefit's network breaks on TLS verification. Don't remove this dep even if it looks unused. It patches certs at import time.
 - **`.env` empty values don't override shell env.** Per Sean's CLAUDE.md, the standard guard is `value = value or os.environ.get("KEY")`. This project uses `python-dotenv` with `override=True`, which means `.env` always wins. If you ever export `ANTHROPIC_API_KEY` in your shell and forget to update `.env`, the shell value gets ignored. Keep `.env` authoritative.
+- **Never schedule clock times in launchd directly.** launchd keeps the time zone it booted with. After the Mac moved from Eastern to Pacific on 2026-09-28 without a reboot, the old 6 AM / 2 PM plists fired at 3 AM / 11 AM Pacific. The hourly job plus `run --scheduled` reads the current local time on every run, so travel no longer shifts the digest.
 - **Several sources share one `label` on purpose.** xAI and Cursor both post under "SpaceX AI", three Gemma sources under "Gemma (Google)", and The Decoder, SCMP, and Recode under "Open-weight news". The label is the Slack heading.
 - **Zscaler blocks most AI lab websites** (DeepSeek, Qwen, Kimi, Z.ai, Xiaomi MiMo, Google DeepMind, Interconnects). The open-weight labs are tracked through their Hugging Face orgs instead. Interconnects is configured and logs a 403 each run until the block is lifted.
 - **`max_articles_per_run` is per-site, not total.** Default 10. `lookback_days` keeps normal runs to a handful of articles.

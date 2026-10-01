@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """CLI for the News Agent."""
 
+from datetime import datetime
 from urllib.parse import urlparse
 
 import click
 import yaml
 
 import agent
+import state
 
 
 @click.group()
@@ -16,10 +18,22 @@ def cli():
 
 @cli.command()
 @click.option("--verbose", "-v", is_flag=True, help="Show per-article progress.")
-def run(verbose):
+@click.option("--scheduled", is_flag=True,
+              help="For launchd: exit quietly unless a run_hours slot has passed since the last scheduled run.")
+def run(verbose, scheduled):
     """Fetch latest news and post summaries to Slack."""
-    click.echo("Running News Agent...")
-    results = agent.run(verbose=verbose)
+    now = datetime.now().astimezone()
+    if scheduled and not agent.scheduled_run_due(now):
+        return
+    click.echo(f"Running News Agent... ({now:%Y-%m-%d %H:%M %Z})")
+    try:
+        results = agent.run(verbose=verbose)
+    except RuntimeError as exc:
+        # Not recorded as a scheduled run, so the next hourly wake tries again
+        click.echo(f"\nRun failed: {exc}", err=True)
+        raise SystemExit(1)
+    if scheduled:
+        state.record_scheduled_run(now)
     click.echo(f"\nDone. Posted {len(results)} new article(s) to Slack.")
 
 
